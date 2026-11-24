@@ -15,6 +15,21 @@ from yarl import URL
 from .conftest import ATHLETE_URL, DOMAIN, GRANTED, finish_auth, start_auth
 
 
+async def test_existing_other_provider_still_starts_native_oauth(hass, oauth_app):
+    other = MockConfigEntry(domain="ha_strava", unique_id="42", data={"sentinel": "untouched"})
+    other.add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "pick_implementation"
+    key, _ = oauth_app
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"implementation": key}
+    )
+    assert result["type"] is FlowResultType.EXTERNAL_STEP
+    assert other.data == {"sentinel": "untouched"}
+    assert other.disabled_by is None
+
+
 async def test_native_flow_verifies_identity_and_defaults_preview(
     hass, oauth_app, oauth_responses, aioclient_mock
 ):

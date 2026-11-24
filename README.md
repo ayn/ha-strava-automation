@@ -10,8 +10,7 @@ connection failures. No activity polling or separate server is needed.
 [![Set up Strava Automation](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ha_strava_automation)
 
 This repository was formerly **Strava Activity Tools**. Strava Automation manages
-its own Strava authorization and webhook. Install it as a **custom repository**
-in Marketplace or HACS.
+its own Strava authorization and webhook.
 
 ## Webhook access required
 
@@ -59,8 +58,9 @@ metadata. Easy track laps alone do not justify workout shoes.
 
 ## Install and connect
 
-1. Use HA **2026.10.4 or newer**. Add this repository as a custom **Integration**
-   repository in Marketplace or HACS, download a versioned release and restart HA.
+1. Use HA **2026.10.4 or newer**. Search for **Strava Automation** in Marketplace
+   or HACS. If it does not appear in search, add this repository as a custom
+   **Integration** repository. Download the release and restart HA.
 2. Create a personal [Strava API app](https://www.strava.com/settings/api).
    Set its Authorization Callback Domain to `my.home-assistant.io` for HA's
    standard OAuth redirect. Follow Strava's current eligibility/API policies.
@@ -82,8 +82,8 @@ share its remote subscription and quota budget.
 
 To keep another Strava integration installed alongside this one, give each a
 **different API app/client ID**: Strava permits one webhook subscription per app.
-To move an existing connection and reuse its API app, see the
-[connection migration guide](docs/MIGRATION.md).
+To switch from another Strava integration, follow the
+[manual migration guide](docs/MIGRATION.md).
 
 ## Native actions and events
 

@@ -1,3 +1,15 @@
+# Marketplace review changes (0.7.6)
+
+The setup flow uses only Strava Automation's own HA Application Credentials.
+The test suite verifies that another integration's presence leaves setup on
+the normal OAuth path and that a foreign webhook callback is preserved. A
+reload through native HA setup keeps an existing callback, terminal receipts
+and duplicate suppression, including for entries with legacy handover metadata.
+The workout service regression verifies that every time-zone lookup runs off
+the HA event loop. All 411 tests pass with 93.32% coverage.
+
+The older handover checks below describe historical releases.
+
 # Standalone runtime check (0.7.2)
 
 One private HAOS installation running Core 2026.11.2 was switched from the old

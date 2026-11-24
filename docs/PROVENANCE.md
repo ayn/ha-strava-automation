@@ -8,9 +8,6 @@ reused from this repository's original companion code and retain its MIT history
 
 The authoring agent had previously read the provider's architecture guide while
 planning. This is disclosed rather than claiming a formal clean-room process.
-The supported connection migration reads native HA OAuth2Session objects in HA
-memory and uses native Application Credentials/config-entry APIs. It does not
-import the other provider's authentication modules or export credentials.
 
 Primary references:
 

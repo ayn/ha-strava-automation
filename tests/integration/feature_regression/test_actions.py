@@ -1,6 +1,8 @@
 """Our retained action regressions exercised against independent OAuth setup."""
 
+from threading import get_ident
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -287,6 +289,12 @@ async def test_calendar_suggestion_service_is_read_only(hass, configured):
         laps=[{"distance": 400, "moving_time": 80 if i % 2 == 0 else 140} for i in range(8)],
     )
     calls = []
+    loop_thread = get_ident()
+    lookup_threads = []
+
+    def resolve_zone(name):
+        lookup_threads.append(get_ident())
+        return ZoneInfo(name)
 
     async def calendar_response(call):
         calls.append(dict(call.data))
@@ -305,6 +313,7 @@ async def test_calendar_suggestion_service_is_read_only(hass, configured):
     with (
         patch.object(client, "get", AsyncMock(return_value=activity)),
         patch.object(client, "update", AsyncMock()) as update,
+        patch("custom_components.ha_strava_automation.workouts.ZoneInfo", side_effect=resolve_zone),
     ):
         result = await hass.services.async_call(
             DOMAIN,
@@ -328,6 +337,7 @@ async def test_calendar_suggestion_service_is_read_only(hass, configured):
     assert not update.called
     assert calls[0]["start_date_time"] == "2026-01-09T00:00:00+00:00"
     assert calls[0]["end_date_time"] == "2026-01-10T00:00:00+00:00"
+    assert lookup_threads and all(thread != loop_thread for thread in lookup_threads)
 
 
 async def test_calendar_suggestion_fails_closed_when_calendar_unavailable(hass, configured):
@@ -336,6 +346,25 @@ async def test_calendar_suggestion_fails_closed_when_calendar_unavailable(hass, 
         hass.data[DOMAIN][entry.entry_id].client, "get", AsyncMock(return_value=activity)
     ):
         with pytest.raises(HomeAssistantError, match="calendar_unavailable"):
+            await hass.services.async_call(
+                DOMAIN,
+                "suggest_workout",
+                {
+                    "config_entry_id": entry.entry_id,
+                    "activity_id": "9",
+                    "calendar_entity": "calendar.training",
+                },
+                blocking=True,
+                return_response=True,
+            )
+
+
+async def test_calendar_suggestion_rejects_unknown_activity_zone(hass, configured):
+    entry, activity = configured
+    activity["timezone"] = "(GMT+00:00) Invalid/Unknown"
+    client = hass.data[DOMAIN][entry.entry_id].client
+    with patch.object(client, "get", AsyncMock(return_value=activity)):
+        with pytest.raises(HomeAssistantError, match="invalid_activity_time"):
             await hass.services.async_call(
                 DOMAIN,
                 "suggest_workout",

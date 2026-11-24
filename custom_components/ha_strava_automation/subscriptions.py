@@ -118,25 +118,10 @@ class SubscriptionManager:
         except OSError:
             raise ActivityError("job_storage_unavailable") from None
 
-    async def _ensure_remote(self, takeover=None):
+    async def _ensure_remote(self):
         records = await self.request("GET")
         if not isinstance(records, list) or len(records) > 1:
             raise ActivityError("invalid_subscription_response")
-        if (
-            records
-            and isinstance(records[0], dict)
-            and records[0].get("callback_url") != self.record["callback_url"]
-        ):
-            item = records[0]
-            if (
-                not isinstance(takeover, dict)
-                or len(self.targets) != 1
-                or strava_id(item.get("id")) != takeover.get("id")
-                or item.get("callback_url") != takeover.get("callback_url")
-            ):
-                raise ActivityError("subscription_conflict")
-            await self.request("DELETE", identifier=takeover["id"])
-            records = []
         if records:
             item = records[0]
             if (
@@ -165,7 +150,7 @@ class SubscriptionManager:
         self.record = record
         self.receiver.subscription_id = identifier
 
-    async def connect(self, athlete_id, accept, *, takeover=None):
+    async def connect(self, athlete_id, accept):
         async with self.lock:
             if athlete_id in self.targets:
                 raise ActivityError("duplicate_account")
@@ -187,7 +172,7 @@ class SubscriptionManager:
                 )
                 self.registered = True
             try:
-                await self._ensure_remote(takeover)
+                await self._ensure_remote()
             except Exception:
                 self._disconnect(athlete_id)
                 raise

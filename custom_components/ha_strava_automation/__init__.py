@@ -1,7 +1,5 @@
 """Independent Strava authentication and native activity automation runtime."""
 
-import logging
-
 from aiohttp import ClientError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -25,7 +23,6 @@ from .client import ActivityError
 from .const import DOMAIN, READY_EVENT, WORKOUT_EVENT
 from .quota import async_get_budget
 
-_LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
@@ -159,12 +156,7 @@ async def async_setup_features(hass: HomeAssistant, entry: ConfigEntry) -> None:
         await runtime.inbox.load()
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
         if entry.options.get("webhook_enabled", True):
-            from .migration import async_takeover_for_entry
-
-            takeover = await async_takeover_for_entry(hass, entry)
-            await runtime.application.connect(
-                runtime.athlete_id, runtime.inbox.accept, takeover=takeover
-            )
+            await runtime.application.connect(runtime.athlete_id, runtime.inbox.accept)
     except Exception:
         if runtime.inbox is not None:
             await runtime.inbox.close()
@@ -174,14 +166,6 @@ async def async_setup_features(hass: HomeAssistant, entry: ConfigEntry) -> None:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         entry.runtime_data = None
         raise
-    from .migration import async_mark_migration_complete
-
-    try:
-        await async_mark_migration_complete(hass, entry)
-    except OSError:
-        _LOGGER.warning(
-            "Migration audit checkpoint could not be saved; credential ownership is unchanged"
-        )
     runtime.worker.resume()
     entry.async_on_unload(entry.add_update_listener(async_options_updated))
 

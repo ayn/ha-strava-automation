@@ -8,8 +8,8 @@ and versioned release, with domain `ha_strava_automation`.
 Before a release, run the full suite with the required coverage, Ruff, HACS
 packaging validation and hassfest. Review the complete diff for credentials,
 production fixtures, account leaks, unsafe lifecycle work and incompatible changes.
-Version 0.7.0 changes the component domain; document the explicit migration before
-releasing it. There must be exactly one shipped component directory in the root.
+Document any changes that affect setup or existing connections. Ship exactly one
+component directory in the root.
 
 Use a feature branch, PR, green checks and reviewed merge; never push directly to
 main. Only then tag/publish the matching version. Documentation-only changes do

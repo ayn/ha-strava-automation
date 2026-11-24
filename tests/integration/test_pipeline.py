@@ -145,6 +145,41 @@ async def test_durable_ingress_verifies_api_owner_and_suppresses_duplicates(
     )
 
 
+async def test_reload_keeps_existing_entry_callback_and_receipts_with_legacy_metadata(
+    hass, pipeline, freezer
+):
+    entry, client, path, _, writes, _ = pipeline
+    events = async_capture_events(hass, READY_EVENT)
+    assert (await client.post(path, json=delivery())).status == 200
+    await tick(hass, freezer)
+    await tick(hass, freezer)
+    original_data = {
+        **entry.data,
+        "migration_source_entry_id": "removed-synthetic-provider",
+        "migration_remote_subscription": {
+            "id": "99",
+            "callback_url": "https://old.example.test/hook",
+        },
+    }
+    hass.config_entries.async_update_entry(entry, data=original_data)
+    original_options = dict(entry.options)
+    original_application = dict(entry.runtime_data.application.record)
+    original_jobs = deepcopy(entry.runtime_data.worker.queue.jobs)
+    assert original_jobs and all(job["status"] == "done" for job in original_jobs.values())
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    assert entry.data == original_data
+    assert entry.options == original_options
+    assert entry.runtime_data.application.record == original_application
+    assert entry.runtime_data.worker.queue.jobs == original_jobs
+    assert (await client.post(path, json=delivery())).status == 200
+    assert (await client.post(path, json=delivery(124))).status == 200
+    await tick(hass, freezer)
+    await tick(hass, freezer)
+    assert [event.data["activity_id"] for event in events] == ["123", "124"]
+    assert not writes
+
+
 async def test_native_automation_tags_before_short_mute_and_preserves_notes(
     hass, pipeline, freezer
 ):

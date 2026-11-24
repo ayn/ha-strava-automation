@@ -19,7 +19,6 @@ from .auth import (
 )
 from .client import ActivityError
 from .const import DOMAIN
-from .migration import MigrationError, async_pause_source, async_prepare_migration
 from .quota import async_get_budget
 
 
@@ -43,78 +42,6 @@ class StravaAutomationFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
     def extra_authorize_data(self) -> dict[str, str]:
         """Explain requested scopes in the setup UI; allow declined optional writes."""
         return {"scope": ",".join(REQUESTED_SCOPES), "approval_prompt": "force"}
-
-    async def async_step_user(self, user_input=None):
-        """Offer an explicit native connection handover when a source exists."""
-        if self.hass.config_entries.async_entries("ha_strava"):
-            return self.async_show_menu(step_id="user", menu_options=["new_account", "migrate"])
-        return await self.async_step_new_account(user_input)
-
-    async def async_step_new_account(self, user_input=None):
-        return await super().async_step_user(user_input)
-
-    async def async_step_migrate(self, user_input=None):
-        """No account is paused, or new credentials stored, at the selection step."""
-        sources = self.hass.config_entries.async_entries("ha_strava")
-        errors = {}
-        if user_input is not None:
-            try:
-                snapshot = await async_prepare_migration(self.hass, user_input["source_entry_id"])
-            except MigrationError as err:
-                errors["base"] = str(err)
-            else:
-                self._migration_expected = (
-                    snapshot.source_entry_id,
-                    snapshot.athlete_id,
-                    snapshot.client_id,
-                )
-                return await self.async_step_migration_confirm()
-        return self.async_show_form(
-            step_id="migrate",
-            errors=errors,
-            data_schema=vol.Schema(
-                {
-                    vol.Required("source_entry_id"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=[
-                                {"value": entry.entry_id, "label": entry.title} for entry in sources
-                            ]
-                        )
-                    )
-                }
-            ),
-        )
-
-    async def async_step_migration_confirm(self, user_input=None):
-        """Refresh the preflight, then pause the old refresh owner before creation."""
-        errors = {}
-        if user_input is not None and user_input.get("confirm_pause") is True:
-            try:
-                snapshot = await async_prepare_migration(self.hass, self._migration_expected[0])
-                if (
-                    snapshot.source_entry_id,
-                    snapshot.athlete_id,
-                    snapshot.client_id,
-                ) != self._migration_expected:
-                    raise MigrationError("wrong_account")
-                await self.async_set_unique_id(snapshot.athlete_id)
-                self._abort_if_unique_id_configured()
-                await async_pause_source(self.hass, snapshot)
-            except MigrationError as err:
-                errors["base"] = str(err)
-            else:
-                return self.async_create_entry(
-                    title=f"Strava ({snapshot.athlete_id})",
-                    data=snapshot.data,
-                    options={"preview_only": True},
-                )
-        elif user_input is not None:
-            errors["base"] = "migration_confirmation_required"
-        return self.async_show_form(
-            step_id="migration_confirm",
-            errors=errors,
-            data_schema=vol.Schema({vol.Required("confirm_pause", default=False): bool}),
-        )
 
     async def async_oauth_create_entry(self, data: dict) -> dict:
         """Bind tokens only to the authenticated athlete, preserving reauth options."""
