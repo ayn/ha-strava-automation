@@ -11,27 +11,6 @@
       "reauth_confirm": {
         "title": "Reconnect your Strava account",
         "description": "Authorize the same athlete using the same Strava API app. Your existing options will be preserved."
-      },
-      "user": {
-        "title": "Strava Automation",
-        "menu_options": {
-          "new_account": "Connect with a separate Strava API app",
-          "migrate": "Migrate from ha_strava"
-        }
-      },
-      "migrate": {
-        "title": "Select the existing Strava connection",
-        "description": "Reuse its API app and authorization. No connection changes until you confirm. If Activity Tools is installed, pause its automations and disable it first.",
-        "data": {
-          "source_entry_id": "Existing ha_strava connection"
-        }
-      },
-      "migration_confirm": {
-        "title": "Transfer this Strava connection",
-        "description": "This pauses ha_strava before transferring OAuth ownership. Your old entry remains disabled for rollback. The new integration starts in preview mode. Custom automations and provider sensors are not automatically migrated.",
-        "data": {
-          "confirm_pause": "Pause ha_strava and transfer this connection"
-        }
       }
     },
     "abort": {
@@ -41,22 +20,6 @@
       "cannot_connect": "Unable to verify your Strava account right now. Try again later.",
       "wrong_account": "Authorize the same athlete as the existing connection. Nothing was changed.",
       "wrong_application": "Use the same Strava API app as the existing connection. Nothing was changed."
-    },
-    "error": {
-      "unsupported_source": "This connection does not expose a supported native HA OAuth session. Reconnect it before migrating.",
-      "source_not_loaded": "Enable the old connection first, or resume its recorded migration.",
-      "dependent_integration_active": "Pause dependent Activity Tools automations, let active jobs finish, and disable Activity Tools before migrating.",
-      "migration_credentials_missing": "The application credentials for the paused migration are missing. Restore them before resuming.",
-      "migration_scope_unknown": "The existing granted permissions could not be verified. Reauthorize the old provider or use fresh consent before migrating. The source has not been paused.",
-      "migration_auth_invalid": "The existing authorization could not be verified. Reconnect the old provider before migrating.",
-      "wrong_account": "The authenticated athlete changed or does not match this connection. Nothing was transferred.",
-      "already_configured": "This athlete already has a Strava Automation connection.",
-      "migration_credentials_conflict": "Conflicting app credentials exist. Resolve them before transferring this connection.",
-      "migration_pause_failed": "The old connection could not be paused safely. No target was created.",
-      "migration_storage_failed": "The migration record could not be saved. The old connection was restored.",
-      "migration_confirmation_required": "Confirm pausing the old connection before proceeding.",
-      "shared_application_migration": "This API app is shared with another local account. Give each integration its own API app before migrating.",
-      "migration_subscription_unknown": "The existing remote callback could not be matched to this connection. The old connection has not been paused. Verify its webhook configuration before retrying."
     }
   },
   "entity": {

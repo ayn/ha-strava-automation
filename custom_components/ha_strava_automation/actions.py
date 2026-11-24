@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from zoneinfo import ZoneInfoNotFoundError
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -286,58 +287,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             supports_response=SupportsResponse.OPTIONAL,
         )
 
-    async def adopt(call: ServiceCall) -> dict:
-        from .adoption import async_adopt_activity_tools
-
-        try:
-            return await async_adopt_activity_tools(
-                hass, call.data["config_entry_id"], call.data["source_entry_id"]
-            )
-        except ActivityError as err:
-            raise HomeAssistantError(str(err)) from None
-        except OSError:
-            raise HomeAssistantError("job_storage_unavailable") from None
-
-    async_register_admin_service(
-        hass,
-        DOMAIN,
-        "adopt_activity_tools_state",
-        adopt,
-        schema=vol.Schema(
-            {vol.Required("config_entry_id"): str, vol.Required("source_entry_id"): str}
-        ),
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-
-    async def import_completed(call: ServiceCall) -> dict:
-        from .adoption import async_import_completed_jobs
-
-        try:
-            return await async_import_completed_jobs(
-                hass,
-                call.data["config_entry_id"],
-                call.data["expected_athlete_id"],
-                call.data["receipts"],
-            )
-        except ActivityError as err:
-            raise HomeAssistantError(str(err)) from None
-        except OSError:
-            raise HomeAssistantError("job_storage_unavailable") from None
-
-    async_register_admin_service(
-        hass,
-        DOMAIN,
-        "import_completed_jobs",
-        import_completed,
-        schema=vol.Schema(
-            {
-                vol.Required("config_entry_id"): str,
-                vol.Required("expected_athlete_id"): str,
-                vol.Required("receipts"): dict,
-            }
-        ),
-        supports_response=SupportsResponse.OPTIONAL,
-    )
     return True
 
 
@@ -393,8 +342,10 @@ async def workout_suggestion(hass, entry, runtime, activity_id, calendar):
     client = runtime.client
     activity = await client.get(activity_id)
     try:
-        start, end = calendar_window(activity, hass.config.time_zone)
-    except KeyError, TypeError, ValueError:
+        start, end = await hass.async_add_executor_job(
+            calendar_window, activity, hass.config.time_zone
+        )
+    except KeyError, TypeError, ValueError, ZoneInfoNotFoundError:
         raise ActivityError("invalid_activity_time") from None
     try:
         response = await hass.services.async_call(
@@ -414,7 +365,9 @@ async def workout_suggestion(hass, entry, runtime, activity_id, calendar):
     if not isinstance(events, list):
         raise ActivityError("calendar_unavailable")
     selected = entry.options.get("track_shoes", "disabled")
-    workout = suggest_workout(activity, events, hass.config.time_zone)
+    workout = await hass.async_add_executor_job(
+        suggest_workout, activity, events, hass.config.time_zone
+    )
     geometry = await hass.async_add_executor_job(track_evidence, activity)
     try:
         shoes = await client.shoes() if selected != "disabled" else []
