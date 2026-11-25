@@ -180,10 +180,12 @@ async def test_reload_keeps_existing_entry_callback_and_receipts_with_legacy_met
     assert not writes
 
 
+@pytest.mark.parametrize("activity_id", [123, 2**63 - 1], ids=["ordinary-id", "max-int64"])
 async def test_native_automation_tags_before_short_mute_and_preserves_notes(
-    hass, pipeline, freezer
+    hass, pipeline, freezer, activity_id
 ):
-    entry, client, path, activity, writes, _ = pipeline
+    entry, client, path, activity, writes, requests = pipeline
+    activity["id"] = activity_id
 
     async def calendar(_call):
         start = dt_util.parse_datetime(activity["start_date"])
@@ -249,13 +251,16 @@ async def test_native_automation_tags_before_short_mute_and_preserves_notes(
         },
     )
     processed = async_capture_events(hass, WORKOUT_EVENT)
-    assert (await client.post(path, json=delivery())).status == 200
+    assert (await client.post(path, json=delivery(activity_id))).status == 200
     for _ in range(5):
         await tick(hass, freezer)
     assert activity["workout_type"] == 3
     assert writes == [{"workout_type": "3"}]
     assert activity["description"] == "Keep these independent notes"
-    assert len(processed) == 1
+    assert [event.data["activity_id"] for event in processed] == [str(activity_id)]
+    assert {request for request in requests if request.startswith("/activities/")} == {
+        f"/activities/{activity_id}"
+    }
     assert not activity.get("hide_from_home", False)
 
 
